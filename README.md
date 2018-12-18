@@ -17,6 +17,10 @@ def deps do
 end
 ```
 
+## Notes
+
+* does not support many of the standard mix test options. mostly because of output generation errors.
+
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/ex_pretty_test](https://hexdocs.pm/ex_pretty_test).
