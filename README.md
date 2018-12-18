@@ -4,6 +4,8 @@
 
 ## Installation
 
+PENDING: not available in hex yet. :P
+
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 by adding `ex_pretty_test` to your list of dependencies in `mix.exs`:
 
