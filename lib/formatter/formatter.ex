@@ -16,46 +16,40 @@ defmodule ExPrettyTest.Formatter do
       colors: Keyword.put_new(opts[:colors], :enabled, IO.ANSI.enabled?()),
       width: get_terminal_width(),
       slowest: opts[:slowest],
-      test_counter: %{},
+      test_counter: %{test: 0, success: 0, failure: 0, skipped: 0, excluded: 0, invalid: 0},
       test_timings: [],
       failures: [],
       failure_counter: 0,
       skipped_counter: 0,
       excluded_counter: 0,
       invalid_counter: 0,
-      show_results: Keyword.get(opts, :show_results, true),
-      show_timings: Keyword.get(opts, :show_timings, true)
+      show_results: Keyword.get(opts, :show_results, true)
     }
 
     {:ok, config}
   end
 
   def handle_cast({:suite_started, _opts}, config) do
-    IO.puts(
-      Utils.colorize(:green, Utils.indent("Test suite started", Utils.suite_indent()), config)
-    )
+    Utils.colorize(:green, Utils.indent("Test suite started", Utils.suite_indent()), config)
+    |> IO.puts
 
     {:noreply, config}
   end
 
   def handle_cast({:suite_finished, _run_us, _load_us}, config) do
-    IO.puts(
-      Utils.colorize(:green, Utils.indent("Test suite finished", Utils.suite_indent()), config)
-    )
+    Utils.colorize(:green, Utils.indent("Test suite finished", Utils.suite_indent()), config)
+    |> IO.puts
 
     Timings.report_times(config)
-    IO.puts("")
     Errors.report_errors(config)
-    IO.puts("")
     Outcome.report_outcome(config)
 
     {:noreply, config}
   end
 
   def handle_cast({:module_started, %ExUnit.TestModule{name: name}}, config) do
-    IO.puts(
-      Utils.colorize(:green, Utils.indent(Atom.to_string(name), Utils.module_indent()), config)
-    )
+    Utils.colorize(:green, Utils.indent(Atom.to_string(name), Utils.module_indent()), config)
+    |> IO.puts
 
     {:noreply, config}
   end
@@ -82,7 +76,8 @@ defmodule ExPrettyTest.Formatter do
 
   def handle_cast({:test_finished, %ExUnit.Test{state: nil} = test}, config) do
     IO.puts(Utils.colorize(:green, test_message(test.name), config))
-    test_counter = update_test_counter(config.test_counter, test)
+    test_counter = update_counter(config.test_counter, :success)
+    #test_counter = update_test_counter(config.test_counter, test)
     test_timings = update_test_timings(config.test_timings, test)
     config = %{config | test_counter: test_counter, test_timings: test_timings}
     {:noreply, config}
@@ -90,21 +85,24 @@ defmodule ExPrettyTest.Formatter do
 
   def handle_cast({:test_finished, %ExUnit.Test{state: {:excluded, _}} = test}, config) do
     IO.puts(Utils.colorize(:cyan, test_message(test.name), config))
-    test_counter = update_test_counter(config.test_counter, test)
+    test_counter = update_counter(config.test_counter, :excluded)
+    #test_counter = update_test_counter(config.test_counter, test)
     config = %{config | test_counter: test_counter, excluded_counter: config.excluded_counter + 1}
     {:noreply, config}
   end
 
   def handle_cast({:test_finished, %ExUnit.Test{state: {:skipped, _}} = test}, config) do
     IO.puts(Utils.colorize(:yellow, test_message(test.name), config))
-    test_counter = update_test_counter(config.test_counter, test)
+    test_counter = update_counter(config.test_counter, :skipped)
+    #test_counter = update_test_counter(config.test_counter, test)
     config = %{config | test_counter: test_counter, skipped_counter: config.skipped_counter + 1}
     {:noreply, config}
   end
 
   def handle_cast({:test_finished, %ExUnit.Test{state: {:invalid, _}} = test}, config) do
-    IO.puts(Utils.colorize(:orange, test_message(test.name), config))
-    test_counter = update_test_counter(config.test_counter, test)
+    IO.puts(Utils.colorize(:light_red, test_message(test.name), config))
+    test_counter = update_counter(config.test_counter, :invalid)
+    #test_counter = update_test_counter(config.test_counter, test)
     config = %{config | test_counter: test_counter, invalid_counter: config.invalid_counter + 1}
     {:noreply, config}
   end
@@ -113,11 +111,11 @@ defmodule ExPrettyTest.Formatter do
     {test_name, path, line_number} = deconstruct_failures(failures)
     IO.puts(Utils.colorize(:red, test_message(test_name), config))
 
-    IO.puts(
-      Utils.colorize(:red, Utils.indent("#{path}:#{line_number}", Utils.failure_indent()), config)
-    )
+    Utils.colorize(:red, Utils.indent("#{path}:#{line_number}", Utils.failure_indent()), config)
+    |> IO.puts()
 
-    test_counter = update_test_counter(config.test_counter, test)
+    test_counter = update_counter(config.test_counter, :failure)
+    #test_counter = update_test_counter(config.test_counter, test)
     test_timings = update_test_timings(config.test_timings, test)
     failures = update_failures(config.failures, test)
     failure_counter = config.failure_counter + 1
@@ -131,6 +129,11 @@ defmodule ExPrettyTest.Formatter do
     }
 
     {:noreply, config}
+  end
+
+  defp update_counter(counter, test_type) do
+    Map.update(counter, :test, 1, &(&1 + 1))
+    |> Map.update(test_type, 1, &(&1 + 1))
   end
 
   defp update_test_counter(test_counter, %{tags: %{test_type: test_type}}) do

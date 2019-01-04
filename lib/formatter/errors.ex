@@ -7,6 +7,7 @@ defmodule ExPrettyTest.Formatter.Errors do
   def report_errors(%{failures: failures}) when length(failures) == 0, do: nil
 
   def report_errors(config) do
+    IO.puts ""
     IO.puts(Utils.colorize(:red, Utils.indent("Errors Found:", Utils.suite_indent()), config))
     IO.puts("")
 
